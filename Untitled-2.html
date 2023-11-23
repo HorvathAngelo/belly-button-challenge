@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>Bellybutton Biodiversity</title>
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+</head>
+<body>
+  <div class="container">
+    <div class="row">
+      <div class="col-md-12 jumbotron text-center">
+        <h1>Belly Button Biodiversity Dashboard</h1>
+        <p>Use the interactive charts below to explore the dataset</p>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col-md-2">
+        <div class="well">
+          <h5>Test Subject ID No.:</h5>
+          <select id="selDataset" onchange="optionChanged(this.value)"></select>
+        </div>
+        <div class="panel panel-primary">
+          <div class="panel-heading">
+            <h3 class="panel-title">Demographic Info</h3>
+          </div>
+          <div id="sample-metadata" class="panel-body"></div>
+        </div>
+      </div>
+      <div class="col-md-5">
+        <div id="bar"></div>
+      </div>
+      <div class="col-md-5">
+        <div id="bubble"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Include the necessary JavaScript libraries -->
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+
+  <!-- Include app.js file -->
+  <script src="static/js/app.js"></script>
+
+  <script>
+    function fetchData(selectedId) {
+      const url = "https://2u-data-curriculum-team.s3.amazonaws.com/dataviz-classroom/v1.1/14-Interactive-Web-Visualizations/02-Homework/samples.json";
+
+      d3.json(url).then(function(data) {
+        const samples = data.samples;
+        const selectedSample = samples.find(sample => sample.id === selectedId);
+        const top10SampleValues = selectedSample.sample_values.slice(0, 10);
+        const top10OtuIds = selectedSample.otu_ids.slice(0, 10);
+        const top10OtuLabels = selectedSample.otu_labels.slice(0, 10);
+
+        createBarChart(top10SampleValues, top10OtuIds, top10OtuLabels, selectedId);
+        createBubbleChart(selectedSample.otu_ids, selectedSample.sample_values, selectedSample.otu_labels, selectedId);
+        displayMetadata(data.metadata, selectedId);
+      }).catch(function(error) {
+        console.error("Error fetching data:", error);
+      });
+    }
+
+    function createBarChart(sampleValues, otuIds, otuLabels, selectedId) {
+      const trace = {
+        x: sampleValues,
+        y: otuIds.map(otuId => `OTU ${otuId}`),
+        text: otuLabels,
+        type: "bar",
+        orientation: "h"
+      };
+
+      const data = [trace];
+
+      const layout = {
+        title: `Top 10 OTUs for Subject ${selectedId}`,
+        xaxis: { title: "Sample Values" },
+        yaxis: { title: "OTU ID" }
+      };
+
+      Plotly.newPlot("bar", data, layout);
+    }
+
+    function createBubbleChart(otuIds, sampleValues, otuLabels, selectedId) {
+      const trace = {
+        x: otuIds,
+        y: sampleValues,
+        text: otuLabels,
+        mode: 'markers',
+        marker: {
+          size: sampleValues,
+          color: otuIds,
+          colorscale: 'Earth',
+          opacity: 0.6
+        }
+      };
+
+      const data = [trace];
+
+      const layout = {
+        title: `Bubble Chart for Subject ${selectedId}`,
+        xaxis: { title: "OTU IDs" },
+        yaxis: { title: "Sample Values" },
+        showlegend: false
+      };
+
+      Plotly.newPlot("bubble", data, layout);
+    }
+
+    function displayMetadata(metadata, selectedId) {
+      const selectedMetadata = metadata.find(entry => entry.id === parseInt(selectedId));
+      const metadataDiv = d3.select("#sample-metadata");
+
+      metadataDiv.html("");
+
+      Object.entries(selectedMetadata).forEach(([key, value]) => {
+        metadataDiv.append("p").text(`${key}: ${value}`);
+      });
+    }
+
+    function optionChanged(selectedId) {
+      fetchData(selectedId);
+    }
+
+    function init() {
+      const url = "https://2u-data-curriculum-team.s3.amazonaws.com/dataviz-classroom/v1.1/14-Interactive-Web-Visualizations/02-Homework/samples.json";
+      const dropdownMenu = d3.select("#selDataset");
+
+      d3.json(url).then(function(data) {
+        const sampleNames = data.names;
+        sampleNames.forEach(sample => {
+          dropdownMenu.append("option").text(sample).property("value", sample);
+        });
+
+        const initialId = sampleNames[0];
+        fetchData(initialId);
+      }).catch(function(error) {
+        console.error("Error fetching data:", error);
+      });
+    }
+
+    init();
+  </script>
+
+</body>
+</html>
